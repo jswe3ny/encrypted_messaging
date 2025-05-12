@@ -118,6 +118,8 @@
       otherUser,
       privateKeyBase64
     );
+
+    
   };
 
   const poll = async () => {
@@ -223,13 +225,12 @@
   onMount(() => {
    poll();
   });
-  let initialScroll = false
+
   $effect(() => {
     temp;
     const feed = document.getElementById("feed");
-    if (feed && initialScroll == false ) {
+    if (feed) {
       feed.scrollTop = feed.scrollHeight;
-      initialScroll = true
     }
   });
 
