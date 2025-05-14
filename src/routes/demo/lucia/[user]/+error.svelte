@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
+		console.log("error")
+
 </script>
 
-<p>{page.error?.message}</p>
+<p>ERROR: {page.error?.message}</p>

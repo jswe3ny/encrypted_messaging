@@ -23,7 +23,6 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
     }
 
 
-    // console.log("latests: " + latestMessageTimestamp.toISOString())
     if (!latestMessageTimestamp) {
         return new Response(
             JSON.stringify({ 
@@ -49,9 +48,6 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
         )
       )
 
-    console.log("new messages: ", newEncryptedMessages)
-
-
     if (newEncryptedMessages.length == 0) {
         return new Response(
             JSON.stringify({ 
@@ -64,7 +60,6 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
           );
     }
 
-    // console.log()
         return new Response(
             JSON.stringify({ 
               success: true,

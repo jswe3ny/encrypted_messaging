@@ -14,8 +14,7 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
     if (!user) {
       return new Response('User Not Signed in', { status: 401 });
     }
-    // console.log(req)
-    // const recipientPubKey = await getUserPublicKey(req.recipientUsername);
+
     const senderPublicKey = req.senderPubKey as string;
     const receiverPublicKey = req.recipientPubKey as string;
     const cipherText = req.cipherText;
@@ -23,10 +22,20 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
     const securityLevel = req.securityLevel
 
 		const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    if (receiverPublicKey == senderPublicKey) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: true,
+          message:"error - Can't start conversation with yourself" }), {
+          headers: { 'Content-Type': 'application/json' }
+
+          }
+      );
+    }
+
+
     if (!cipherText || !iv || !securityLevel) { 
-        console.log("iv: " + iv)
-        console.log("rsec: " + securityLevel)
-        console.log("encrpytionText: " +cipherText)
         return new Response(
         JSON.stringify({ 
           success: false,
@@ -37,8 +46,7 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
           }
       );
     }
-
-    if (senderPublicKey !== user.longTermPublicKey) {
+    if (senderPublicKey !== user.publicKey) {
       // Public Key Does Not Belong to User
         return new Response(
           JSON.stringify({ 
@@ -73,21 +81,25 @@ export const POST: RequestHandler = async ({ locals, request }) =>  {
           }
       );
     }
+
     console.log("==============================================");
-    console.log("INIT CONVO API: " + iv)
     const conversationId:string = insertConversation[0].id;
     const senderId : string = insertConversation[0].participant_a;
-    const receiverId: string = insertConversation[0].participant_b;
 
-    const insertMessage = await db.insert(message).values({
+    await db.insert(message).values({
       conversationId,
       senderId,
-      senderPublicKey,
-      receiverId,
-      receiverPublicKey,
       cipherText,
       iv
     })
-    return new Response("success")
+    return new Response(
+        JSON.stringify({ 
+          success: true,
+          error: false,
+          message:"Conversation Started" }), {
+            headers: { 'Content-Type': 'application/json' }
+
+          }
+      );
     
   }

@@ -9,6 +9,7 @@ export const getUserData = async (currentUserId:string) =>  {
 
 	const userA = alias(tables.user, 'userA');
 	const userB = alias(tables.user, 'userB');
+
 	const currentUserConversations = await db.select({
 		conversationId: tables.conversation.id,
 		securityLevel: tables.conversation.securityLevel,
@@ -29,19 +30,6 @@ export const getUserData = async (currentUserId:string) =>  {
       )
     );
 
-	const filteredConversations = currentUserConversations.map(row => {
-		const isA = row.participantA ===  currentUserId;
-		return {
-		  conversationId: row.conversationId,
-		  createdAt: row.createdAt,
-		  securityLevel: row.securityLevel,
-		  otherUsername: isA ? row.userBUsername : row.userAUsername,
-		  otherPublicKey: isA ? row.userBPubKey : row.userAPubKey,
-		  otherUserId: isA ? row.participantA : row.participantB
-		};
-	});
-
-	//   console.log(filteredConversations)
-	return { filteredConversations };
+	return { currentUserConversations };
 
 }

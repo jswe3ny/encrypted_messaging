@@ -11,6 +11,7 @@
   let pubKey = $state("");
   let privKey = $state("");
   let temp = $state("");
+  let conversationErrorMessage = $state("");
   const newUserKeyPair = async () => {
     const { publicKeyBase64, privateKeyBase64 } =
       await generateIdentityKeypair();
@@ -27,10 +28,8 @@
     if (message.success) {
       pubKey = publicKeyBase64;
       privKey = privateKeyBase64;
-      // console.log(message.success);
     } else {
       console.log(message.error);
-      console.log("public Key: " + message.publicKey);
     }
   };
 
@@ -61,7 +60,6 @@
       console.log(resData.message);
       return;
     }
-        console.log("pk: " + privateKeyBase64)
 
     const myPrivateKey = await importPrivateKey(privateKeyBase64) // test 2 purposes
     const recipientPubKeyBase64 = resData.data.recipientPubKey;
@@ -69,73 +67,88 @@
     const aesKey = await deriveAESKey(myPrivateKey, importedPublicKey);
     const { cipherText, ivBase64 } = await encryptMessage(aesKey, message);
 
-
-
-   
-    // console.log(data.userData.getCurrentUserInfo[0].currentUserPublicKey)
-    await fetch("/api/initConversation", {
+    //@ts-ignore
+    my_modal_2.close();
+    form.reset()
+    try {
+    const res =  await fetch("/api/initConversation", {
       method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      senderPubKey: data.currentUser.publicKey,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+      senderPubKey: data.user.publicKey,
       recipientPubKey: recipientPubKeyBase64, 
       cipherText,
       iv: ivBase64,
       securityLevel: securityLevel
-    })
-    });
-
+        })
+      });
+      
+    conversationErrorMessage = "";
+    const resJson = await res.json();
+    
+    if (resJson.success === false) {
+      throw new Error(resJson.message);
+    }
+    } catch (e: any) {
+      // console.log(e.message)
+      conversationErrorMessage = e.message
+    }
 
   };
 </script>
+<div class="max-w-6xl mx-auto">
 
-<form method="post" action="?/logout" use:enhance>
-  <button class="px-4 py-2 font-semibold bg-red-600 text-white">Sign out</button
-  >
-</form>
-{#if !data.currentUser.publicKey}
+{#if !data.user.publicKey}
   <button onclick={newUserKeyPair} class="bg-green-500 px-4 py-2"
     >Generate Keys</button
   >
+  {#if pubKey && privKey}
+  <div class="max-w-lg mx-auto">
+    <p class="font-semibold">Public Key: </p>
+    <p class="break-all">{pubKey}</p>
+    <p class="font-semibold">Private Key: </p>
+    <p class="break-all">{privKey}</p>
+  </div>
+  
+  {/if}
+
 {:else}
   <p>You're account has already generated your public/private keys</p>
-{/if}
-
-{#if pubKey && privKey}
-  <p>PubKey: {pubKey}</p>
-  <p>PrivKey: {privKey}</p>
+   <button
+      class="btn btn-neutral ml-8 mt-4"
+      onclick={() => {
+        // @ts-ignore
+        my_modal_2.showModal();
+      }}>Start Conversation</button
+    >
 {/if}
 
 {#if temp}
   <p>{temp}</p>
 {/if}
 
-<div>
-  <h1>{data.currentUser.publicKey} signed in</h1>
-  <div class="max-w-3xl mx-auto bg-sky-200">
+  <h1 class="text-4xl font-semibold text-center my-6">{data.user.username} signed in</h1>
+  <div class="max-w-3xl mx-auto px-4 pb-4">
+    {#if conversationErrorMessage}
+    <div
+            class=" max-w-md mx-auto w-full p-4 bg-red-500 text-white text-lg mb-2 mt-4 rounded-2xl font-semibold"
+          >
+            <p class="text-lg font-semiboldS mx-auto">Error: {conversationErrorMessage}</p>
+          </div>
+    {/if}
     <h3 class="text-3xl text-center">conversations</h3>
-    <!-- <button class="bg-sky-600 px-3 py-2 text-white hover:cursor-pointer ">Start Conversation</button> -->
 
-    {#each data.filteredConversations as convo}
-    <div class="bg-gray-200 flex flex-col p-10 mb-2">
-      <a href={`./${data.currentUser.username}/${convo.conversationId}`}>
+    {#each data.currentUserConversations as convo}
+    <div class="bg-sky-200 flex flex-col p-10 mb-2 rounded-3xl mx-3">
+      <a href={`./${data.user.username}/${convo.conversationId}`}>
         <p>Id: {convo.conversationId}</p>  
-        <p>With: {convo.otherUsername}</p>  
+        <p>With: {data.user.username === convo.userAUsername ? convo.userBUsername : convo.userAUsername}</p>  
         <p>{convo.securityLevel}</p>
       </a>
-     
     </div>
-   
-
     {/each}
 
-    <button
-      class="btn"
-      onclick={() => {
-        // @ts-ignore
-        my_modal_2.showModal();
-      }}>open modal</button
-    >
+
     <dialog id="my_modal_2" class="modal">
       <div class="modal-box">
         <form
@@ -154,6 +167,7 @@
               type="text"
               class="input w-full"
               placeholder="Username"
+              required
             />
               <legend class="fieldset-legend">Private Key: </legend>
              <input
@@ -161,14 +175,12 @@
               type="text"
               class="input w-full"
               placeholder="Private Key"
+              required
             />
             <legend class="fieldset-legend">Tier</legend>
-            <select name="tier" class="select">
-              <option disabled selected>Pick a security tier</option>
-              <option value="level_1">level 1: Plaintext</option>
-              <option value="level_2">Level 2: PFS</option>
-              <option value="level_3">Level 2.5: Per Convo Double Ratchet</option>
-              <option value="level_4">Level 3: Ephmeral</option>
+            <select required name="tier" class="select">
+              <option disabled selected>Pick a security level</option>
+              <option value="level_2">Level 2: Encrypted</option>
             </select>
             <legend class="fieldset-legend font-semibold text-lg"
               >Message:</legend

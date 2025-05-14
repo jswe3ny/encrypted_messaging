@@ -69,12 +69,18 @@ export const decryptMessage = async (
 	const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
 	const cipherText = Uint8Array.from(atob(encryptedMessage), c => c.charCodeAt(0));
 
-	const decryptedMessageBuffer = await crypto.subtle.decrypt(
-		{ name: "AES-GCM", iv },
-		aesKey, cipherText
-	);
-	const decode = new TextDecoder().decode(decryptedMessageBuffer);
-	return decode
+
+	try {
+		const decryptedMessageBuffer = await crypto.subtle.decrypt(
+			{ name: "AES-GCM", iv },
+			aesKey, cipherText
+		);
+		const decode = new TextDecoder().decode(decryptedMessageBuffer);
+		return decode;
+	} catch (err: any) {
+		throw new Error("Decryption failed: Check Private Key")
+	}
+	
 }
 
 function to12ByteIV(input: unknown): Uint8Array {
@@ -97,7 +103,11 @@ export const decryptConversation = async (//
 	// @ts-ignore
 	messages, // add type later
 	currentUser: { id: string, username: string },
-	otherUser: { publicKey: string, username: string },
+	otherUser: { 
+		publicKey: string,
+		username: string,
+		id:string 
+		},
 	currentUserPrivateKey: string
 
 ) => {
@@ -120,14 +130,9 @@ export const decryptConversation = async (//
 						id: msg.id
 					}
 
-				} catch (err) {
-					console.error('Decryption failed:', {
-						msg,
-						ivBase64,
-						aesKey: sharedAesKey,
-						error: err
-					});
-					throw err;
+				} catch (err: any) {
+				
+				throw new Error(err.message)
 				}
 
 			})

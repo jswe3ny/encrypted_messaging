@@ -2,13 +2,15 @@
 import { getUserData } from '$lib/conversation/getUserData';
 import { error } from 'console';
 import type { LayoutServerLoad } from './$types';
-import { conversation } from '$lib/server/db/schema';
+import { redirect } from '@sveltejs/kit';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
-  if (!locals.user || locals.user.username !== params.user) {
-    throw error(403, { message: 'Not authorized' });
+  if (!locals.user) {
+      redirect(308, '/demo/lucia/login')
   }
+  
+  const user = locals.user
+  const currentNestedUserConversations = await getUserData(user.id);
 
-  const conversations = await getUserData(locals.user.id);
-  return  conversations;
+  return  { currentNestedUserConversations, user};
 };

@@ -1,59 +1,73 @@
 import { error, fail, redirect, type Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import * as tables from '$lib/server/db/schema';
+import {user, message, conversation} from '$lib/server/db/schema';
 import { eq, asc, or, and, desc } from 'drizzle-orm';
-import { getUserPublicKey } from '$lib/conversation/getUserPublicKey';
 
 
 export const load: PageServerLoad = async ({ parent, locals, params }) => {
+
   if (!locals.user) {
     return redirect(302, '/demo/lucia/login');
   }
 
   if (locals.user.username != params.user) {
-    // return fail(403, "not allowed to access this page")
     error(403, { message: "This is not your page, you cant see it" })
   }
-  // const publicKey = await getUserPublicKey(locals.user.username);
   const conversationId = params.conversation
-  const { filteredConversations } = await parent();
+  const { currentNestedUserConversations } = await parent();
 
-  const currentConversation = filteredConversations.find(
+  const currentUserConversations = currentNestedUserConversations.currentUserConversations
+
+  const currentConversation = currentUserConversations.find(
     convo => convo.conversationId === params.conversation
   )
 
-  // console.log(currentConversation)
   if (!currentConversation) {
     throw error(403, { message: 'conversation not found or not authorized' })
   }
 
+  let conversationMessages = await db.select({
+      id: message.id,
+      cipherText: message.cipherText,
+      iv: message.iv,
+      sentAt: message.sentAt,
+      senderId: message.senderId,
+      senderUsername: user.username,
+      senderPublicKey: user.publicKey,
+  })
+    .from(message)
+    .where(eq(message.conversationId, conversationId))
+    .leftJoin(user, eq(message.senderId, user.id))
+    .orderBy(desc(message.sentAt))
+    .limit(10)
 
-  const currentUser = {
-    username: locals.user.username,
-    publicKey: locals.user.longTermPublicKey,
-    id: locals.user.id
-  };
-
-
-
-  let conversationMessages = await db.select()
-    .from(tables.message)
-    .where(eq(tables.message.conversationId, conversationId))
-    .orderBy(desc(tables.message.sentAt))
-    .limit(20)
+  //================= locals becasue of user table =======================
+    const otherUser = (currentConversation.participantA === locals.user.id) 
+      ? {
+          id:currentConversation.participantB ?? '',
+          username: currentConversation.userBUsername ?? '',
+          publicKey: currentConversation.userBPubKey ?? ''
+        }
+      :
+        {
+          id:currentConversation.participantA ?? '',
+          username: currentConversation.userAUsername ?? '',
+          publicKey: currentConversation.userAPubKey ?? ''
+        }
 
     conversationMessages = conversationMessages.reverse()
-
   if (conversationMessages.length < 1) {
     return error(403, { message: "error could not find this conversation" })
   }
 
-  if (!currentConversation.otherPublicKey) {
-    return error(403, { message: "Could not find other user" })
-  }
 
-  // console.log("+++++++++++++++++++++++++++++++++++++")
-  // console.log(currentConversation)
-  return { conversationMessages, currentUser, currentConversation }
+  return { 
+    conversationMessages, 
+    otherUser, 
+    currentConversation: {
+      conversationId: currentConversation.conversationId,
+      securityLevel: currentConversation.securityLevel,
+      createdAt: currentConversation.createdAt
+  } }
 };

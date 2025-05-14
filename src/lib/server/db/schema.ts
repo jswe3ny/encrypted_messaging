@@ -43,23 +43,21 @@ export const conversation = pgTable('conversation', {
 	createdAt: timestamp('created_at').defaultNow()
   });
   
+
+
 export const message = pgTable('message', {
-	id: uuid('id').defaultRandom().primaryKey(),
-	conversationId: uuid('conversation_id').references(() => conversation.id, { onDelete: 'cascade' }),
-	senderId: uuid('sender_id').references(() => user.id, { onDelete: 'cascade' }),
-	senderPublicKey: text('sender_public_key').notNull(),
-	receiverId: uuid('receiver_id').references(() => user.id, { onDelete: 'cascade' }),
-	receiverPublicKey: text('receiver_public_key').notNull(),
-	cipherText: text('cipher_text').notNull(),
-	iv: bytea('iv').default(null),
-	sentAt: timestamp('sent_at').defaultNow()
-  });
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id').references(() => conversation.id),
+  senderId: uuid('sender_id').references(() => user.id),
+  cipherText: text('cipher_text').notNull(),
+  iv: bytea('iv'),
+  sentAt: timestamp('sent_at').defaultNow()
+});
+
 
 export type Session = typeof session.$inferSelect;
 
 export type User = typeof user.$inferSelect;
-
-// export type NewUser = typeof user.$inferInsert
 
 export type Conversation = typeof conversation.$inferSelect;
 
