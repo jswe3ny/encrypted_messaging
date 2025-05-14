@@ -46,7 +46,7 @@ const fetchInsecureMessages = async (e: SubmitEvent) => {
         <span class="font-bold">Conversation Id:</span>
          {msg.conversationId}
     </p>
-    <p><span class="font-bold">Message Text:</span> {msg.message}</p>
+    <p class="break-all"><span class="font-bold">Message Text:</span> {msg.message}</p>
    </div>
    {/each}
 </div>
